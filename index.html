@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Retro iOS Image Dropper</title>
+<style>
+    body {
+        font-family: -apple-system, Helvetica, Arial;
+        background: #f2f2f2;
+        padding: 20px;
+        text-align: center;
+        color: #333;
+    }
+    h1 {
+        font-size: 22px;
+        margin-bottom: 15px;
+    }
+    #preview {
+        margin-top: 20px;
+        max-width: 90%;
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        padding: 10px;
+        background: white;
+    }
+</style>
+</head>
+<body>
+
+<h1>📲 Retro iOS Image Transfer</h1>
+<p>Select an image and it’ll appear below so you can save it.</p>
+
+<input type="file" accept="image/*" id="fileInput"><br>
+
+<div id="preview">No image loaded yet 😔</div>
+
+<script>
+    var fileInput = document.getElementById("fileInput");
+    var preview = document.getElementById("preview");
+
+    fileInput.onchange = function (event) {
+        var file = event.target.files[0];
+        if (!file) return;
+
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            preview.innerHTML = "<img src='" + e.target.result + "' style='max-width:100%; border-radius:10px;'>";
+        };
+        reader.readAsDataURL(file);
+    };
+</script>
+
+</body>
+</html>
