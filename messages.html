@@ -1,136 +1,50 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<title>Offline Messenger</title>
+<meta charset="UTF-8">
+<title>Image Reviver Decoder</title>
 <style>
-    body {
-        font-family: -apple-system, Helvetica, Arial;
-        background: #f2f2f7;
-        margin: 0;
-        padding: 15px;
-    }
-    h1 {
-        text-align: center;
-        font-size: 22px;
-        margin-bottom: 20px;
-    }
-    .mode-btn {
-        width: 48%;
-        padding: 12px;
-        margin: 1%;
-        font-size: 16px;
-        background: #ddd;
-        border: 1px solid #aaa;
-        border-radius: 8px;
-    }
-    #send-section, #receive-section {
-        display: none;
-        margin-top: 20px;
-        background: white;
-        padding: 15px;
-        border-radius: 12px;
-        border: 1px solid #ccc;
-    }
-    input, button, textarea {
-        width: 100%;
-        margin: 8px 0;
-        padding: 10px;
-        font-size: 16px;
-    }
-    textarea {
-        height: 120px;
-    }
+  body { font-family: sans-serif; background: #f0f0f0; padding: 20px; }
+  input, button { margin: 5px; }
+  .output { margin-top: 20px; border: 1px solid #ccc; padding: 10px; background: #fff; }
 </style>
 </head>
 <body>
 
-<h1>Offline Messenger</h1>
+<h2>Image Reviver Decoder</h2>
 
-<button class="mode-btn" onclick="showSend()">Send Message</button>
-<button class="mode-btn" onclick="showReceive()">Receive Message</button>
+<input type="text" id="codeInput" placeholder="Paste your 25-char code">
+<button onclick="decodeCode()">Decode</button>
 
-<!-- SEND -->
-<div id="send-section">
-    <h2>Send Mode</h2>
-
-    <label>Your Username:</label>
-    <input id="send-user" type="text">
-
-    <label>Message:</label>
-    <textarea id="send-msg"></textarea>
-
-    <button onclick="generateMessageCode()">Generate Code</button>
-
-    <label>Share Code:</label>
-    <textarea id="output-code" readonly></textarea>
-</div>
-
-<!-- RECEIVE -->
-<div id="receive-section">
-    <h2>Receive Mode</h2>
-
-    <label>Paste Code:</label>
-    <textarea id="receive-code"></textarea>
-
-    <button onclick="decodeMessage()">Decode</button>
-
-    <h3 id="display-user"></h3>
-    <p id="display-msg"></p>
-</div>
+<div class="output" id="output"></div>
 
 <script>
-function showSend() {
-    document.getElementById('send-section').style.display = 'block';
-    document.getElementById('receive-section').style.display = 'none';
-}
-function showReceive() {
-    document.getElementById('send-section').style.display = 'none';
-    document.getElementById('receive-section').style.display = 'block';
+// Compact pseudo-Base64 decoder (matches the sender)
+function compactDecode(code) {
+  code = code.replace(/0+$/,''); // remove padded zeros
+  return atob(code);
 }
 
-function generateMessageCode() {
-    const user = document.getElementById('send-user').value.trim();
-    const msg = document.getElementById('send-msg').value.trim();
-
-    if (!user || !msg) {
-        alert("Fill everything out!");
-        return;
-    }
-
-    const payload = "MSG|" + user + "|" + msg;
-
-    // Encode whole payload
-    const finalCode = btoa(unescape(encodeURIComponent(payload)));
-
-    document.getElementById('output-code').value = finalCode;
-}
-
-function decodeMessage() {
-    const code = document.getElementById('receive-code').value.trim();
-    if (!code) {
-        alert("Paste a code!");
-        return;
-    }
-
-    try {
-        const decoded = decodeURIComponent(escape(atob(code)));
-        const parts = decoded.split("|");
-
-        if (parts[0] !== "MSG") {
-            alert("Invalid message code!");
-            return;
-        }
-
-        const user = parts[1];
-        const msg = parts[2];
-
-        document.getElementById('display-user').innerText = "From: " + user;
-        document.getElementById('display-msg').innerText = msg;
-    } catch (e) {
-        alert("Invalid or corrupted code!");
-    }
+function decodeCode() {
+  const code = document.getElementById('codeInput').value;
+  const output = document.getElementById('output');
+  try {
+    const decoded = compactDecode(code);
+    const parts = decoded.split('|');
+    const user = parts[0];
+    const name = parts[1];
+    const base64 = parts[2];
+    const img = new Image();
+    img.src = 'data:image/png;base64,' + base64;
+    
+    output.innerHTML = `<p><b>Username:</b> ${user}</p>
+                        <p><b>Image Name:</b> ${name}</p>
+                        <p><b>Image Preview:</b><br>${img.outerHTML}</p>`;
+  } catch(e) {
+    output.innerHTML = "<p style='color:red'>Invalid code!</p>";
+  }
 }
 </script>
+
 </body>
 </html>
