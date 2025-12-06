@@ -2,137 +2,156 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Image Share</title>
+<title>Image Sender / Receiver</title>
 <style>
     body {
         font-family: -apple-system, Helvetica, Arial;
-        background: #eee;
-        padding: 20px;
+        background: #f2f2f7;
+        margin: 0;
+        padding: 15px;
+        color: #000;
+    }
+    h1 {
         text-align: center;
-        color: #222;
+        font-size: 22px;
+        margin-bottom: 20px;
     }
-    h1 { margin-bottom: 5px; }
-    #modeButtons button {
-        margin: 10px;
-        padding: 10px 18px;
-        border-radius: 10px;
-        border: none;
-        background: #007aff;
-        color: white;
+    .mode-btn {
+        width: 48%;
+        padding: 12px;
+        margin: 1%;
         font-size: 16px;
+        background: #ddd;
+        border: 1px solid #aaa;
+        border-radius: 8px;
     }
-    .panel {
+    #send-section, #receive-section {
         display: none;
         margin-top: 20px;
-        background: white;
-        padding: 20px;
-        border-radius: 10px;
+        background: #fff;
+        padding: 15px;
+        border-radius: 12px;
         border: 1px solid #ccc;
     }
-    #preview img {
+    input, button, textarea {
+        width: 100%;
+        margin: 8px 0;
+        padding: 10px;
+        font-size: 16px;
+    }
+    textarea {
+        height: 120px;
+    }
+    img {
         max-width: 100%;
-        border-radius: 10px;
+        margin-top: 10px;
+        border-radius: 12px;
     }
 </style>
 </head>
 <body>
 
-<h1>📤📥 Image Share</h1>
-<p>Send or receive images using usernames + image names.</p>
+<h1>Image Transfer</h1>
 
-<div id="modeButtons">
-    <button onclick="showSend()">Send Mode</button>
-    <button onclick="showReceive()">Receive Mode</button>
-</div>
+<!-- MODE BUTTONS -->
+<button class="mode-btn" onclick="showSend()">Send</button>
+<button class="mode-btn" onclick="showReceive()">Receive</button>
 
 <!-- SEND MODE -->
-<div id="sendPanel" class="panel">
-    <h2>Send an Image</h2>
-    <input id="senderUser" placeholder="Your Username"><br><br>
-    <input id="senderName" placeholder="Image Name"><br><br>
-    <input type="file" accept="image/*" id="senderFile"><br><br>
-    <button onclick="createShare()">Create Share Link</button>
-    <p id="shareResult"></p>
+<div id="send-section">
+    <h2>Send Mode</h2>
+    <label>Username:</label>
+    <input id="send-user" type="text">
+
+    <label>Image Name:</label>
+    <input id="send-name" type="text">
+
+    <label>Select Image:</label>
+    <input id="send-file" type="file" accept="image/*">
+
+    <button onclick="generateCode()">Generate Code</button>
+
+    <label>Share Code:</label>
+    <textarea id="output-code" readonly></textarea>
 </div>
 
 <!-- RECEIVE MODE -->
-<div id="receivePanel" class="panel">
-    <h2>Receive an Image</h2>
-    <input id="receiverUser" placeholder="Username"><br><br>
-    <input id="receiverName" placeholder="Image Name"><br><br>
-    <button onclick="loadShared()">Load Image</button>
+<div id="receive-section">
+    <h2>Receive Mode</h2>
 
-    <div id="preview" style="margin-top:20px;"></div>
+    <label>Paste Code:</label>
+    <textarea id="receive-code"></textarea>
+
+    <button onclick="decodeCode()">Decode</button>
+
+    <h3 id="receive-info"></h3>
+    <img id="receive-img">
 </div>
 
 <script>
-function hideAll() {
-    document.getElementById("sendPanel").style.display = "none";
-    document.getElementById("receivePanel").style.display = "none";
-}
-
+// Switch between sections
 function showSend() {
-    hideAll();
-    document.getElementById("sendPanel").style.display = "block";
+    document.getElementById('send-section').style.display = 'block';
+    document.getElementById('receive-section').style.display = 'none';
 }
 function showReceive() {
-    hideAll();
-    document.getElementById("receivePanel").style.display = "block";
+    document.getElementById('send-section').style.display = 'none';
+    document.getElementById('receive-section').style.display = 'block';
 }
 
-// SEND MODE FUNCTION
-function createShare() {
-    var user = document.getElementById("senderUser").value.trim();
-    var name = document.getElementById("senderName").value.trim();
-    var file = document.getElementById("senderFile").files[0];
+// Turning the image into a Base64 code
+function generateCode() {
+    const user = document.getElementById('send-user').value.trim();
+    const name = document.getElementById('send-name').value.trim();
+    const file = document.getElementById('send-file').files[0];
 
     if (!user || !name || !file) {
-        alert("Fill everything!");
+        alert("Fill everything out!");
         return;
     }
 
-    var reader = new FileReader();
+    const reader = new FileReader();
     reader.onload = function(e) {
-        var data = e.target.result;
-        // Encode: username|imagename|base64
-        var payload = encodeURIComponent(user + "|" + name + "|" + data);
+        const base64 = e.target.result;
 
-        var link = location.href.split("#")[0] + "#" + payload;
+        const payload = "IMG|" + user + "|" + name + "|" + base64;
 
-        document.getElementById("shareResult").innerHTML =
-            "Share this link:<br><textarea style='width:100%;height:80px;'>" +
-            link + "</textarea>";
+        // Encode again for shorter share code
+        const finalCode = btoa(unescape(encodeURIComponent(payload)));
+
+        document.getElementById('output-code').value = finalCode;
     };
     reader.readAsDataURL(file);
 }
 
-// RECEIVE MODE FUNCTION
-function loadShared() {
-    var wantUser = document.getElementById("receiverUser").value.trim();
-    var wantName = document.getElementById("receiverName").value.trim();
-
-    var hash = decodeURIComponent(location.hash.substring(1));
-    if (!hash) {
-        alert("No shared image detected!");
+// Turning the code back into an image
+function decodeCode() {
+    const code = document.getElementById('receive-code').value.trim();
+    if (!code) {
+        alert("Paste a code!");
         return;
     }
 
-    var parts = hash.split("|");
-    if (parts.length < 3) {
-        alert("Share link invalid.");
-        return;
-    }
+    try {
+        const decoded = decodeURIComponent(escape(atob(code)));
+        const parts = decoded.split("|");
 
-    var sentUser = parts[0];
-    var sentName = parts[1];
-    var sentImg = parts[2];
+        if (parts[0] !== "IMG") {
+            alert("Invalid code!");
+            return;
+        }
 
-    if (sentUser === wantUser && sentName === wantName) {
-        document.getElementById("preview").innerHTML =
-            "<img src='" + sentImg + "'>";
-    } else {
-        alert("Wrong username or image name!");
-        document.getElementById("preview").innerHTML = "";
+        const user = parts[1];
+        const name = parts[2];
+        const imageData = parts[3];
+
+        document.getElementById('receive-info').innerText =
+            "From: " + user + "  —  Image: " + name;
+
+        document.getElementById('receive-img').src = imageData;
+
+    } catch (err) {
+        alert("Invalid or corrupted code!");
     }
 }
 </script>
