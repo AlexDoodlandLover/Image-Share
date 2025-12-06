@@ -1,158 +1,93 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<title>Image Sender / Receiver</title>
+<meta charset="UTF-8">
+<title>Image Reviver</title>
 <style>
-    body {
-        font-family: -apple-system, Helvetica, Arial;
-        background: #f2f2f7;
-        margin: 0;
-        padding: 15px;
-        color: #000;
-    }
-    h1 {
-        text-align: center;
-        font-size: 22px;
-        margin-bottom: 20px;
-    }
-    .mode-btn {
-        width: 48%;
-        padding: 12px;
-        margin: 1%;
-        font-size: 16px;
-        background: #ddd;
-        border: 1px solid #aaa;
-        border-radius: 8px;
-    }
-    #send-section, #receive-section {
-        display: none;
-        margin-top: 20px;
-        background: #fff;
-        padding: 15px;
-        border-radius: 12px;
-        border: 1px solid #ccc;
-    }
-    input, button, textarea {
-        width: 100%;
-        margin: 8px 0;
-        padding: 10px;
-        font-size: 16px;
-    }
-    textarea {
-        height: 120px;
-    }
-    img {
-        max-width: 100%;
-        margin-top: 10px;
-        border-radius: 12px;
-    }
+  body { font-family: sans-serif; background: #f0f0f0; padding: 20px; }
+  .mode { margin-bottom: 20px; }
+  .chat { border: 1px solid #ccc; padding: 10px; height: 200px; overflow-y: auto; background: #fff; }
+  input, button { margin: 5px; }
 </style>
 </head>
 <body>
 
-<h1>Image Transfer</h1>
-
-<!-- MODE BUTTONS -->
-<button class="mode-btn" onclick="showSend()">Send</button>
-<button class="mode-btn" onclick="showReceive()">Receive</button>
-
-<!-- SEND MODE -->
-<div id="send-section">
-    <h2>Send Mode</h2>
-    <label>Username:</label>
-    <input id="send-user" type="text">
-
-    <label>Image Name:</label>
-    <input id="send-name" type="text">
-
-    <label>Select Image:</label>
-    <input id="send-file" type="file" accept="image/*">
-
-    <button onclick="generateCode()">Generate Code</button>
-
-    <label>Share Code:</label>
-    <textarea id="output-code" readonly></textarea>
+<h2>Image Reviver</h2>
+<div class="mode">
+  <label><input type="radio" name="mode" value="send" checked> Send</label>
+  <label><input type="radio" name="mode" value="receive"> Receive</label>
 </div>
 
-<!-- RECEIVE MODE -->
-<div id="receive-section">
-    <h2>Receive Mode</h2>
-
-    <label>Paste Code:</label>
-    <textarea id="receive-code"></textarea>
-
-    <button onclick="decodeCode()">Decode</button>
-
-    <h3 id="receive-info"></h3>
-    <img id="receive-img">
+<div id="sendMode">
+  <input type="text" id="username" placeholder="Your username">
+  <input type="text" id="imagename" placeholder="Image name">
+  <input type="file" id="imagefile">
+  <button onclick="sendImage()">Send Image</button>
 </div>
+
+<div id="receiveMode" style="display:none;">
+  <input type="text" id="codeInput" placeholder="Enter code">
+  <button onclick="receiveImage()">Receive Image</button>
+</div>
+
+<h3>Chat / Code Messaging</h3>
+<div class="chat" id="chat"></div>
 
 <script>
-// Switch between sections
-function showSend() {
-    document.getElementById('send-section').style.display = 'block';
-    document.getElementById('receive-section').style.display = 'none';
-}
-function showReceive() {
-    document.getElementById('send-section').style.display = 'none';
-    document.getElementById('receive-section').style.display = 'block';
-}
+const chat = document.getElementById('chat');
+const sendModeDiv = document.getElementById('sendMode');
+const receiveModeDiv = document.getElementById('receiveMode');
 
-// Turning the image into a Base64 code
-function generateCode() {
-    const user = document.getElementById('send-user').value.trim();
-    const name = document.getElementById('send-name').value.trim();
-    const file = document.getElementById('send-file').files[0];
-
-    if (!user || !name || !file) {
-        alert("Fill everything out!");
-        return;
+document.querySelectorAll('input[name="mode"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    if(radio.value === 'send'){
+      sendModeDiv.style.display = 'block';
+      receiveModeDiv.style.display = 'none';
+    } else {
+      sendModeDiv.style.display = 'none';
+      receiveModeDiv.style.display = 'block';
     }
+  });
+});
 
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const base64 = e.target.result;
-
-        const payload = "IMG|" + user + "|" + name + "|" + base64;
-
-        // Encode again for shorter share code
-        const finalCode = btoa(unescape(encodeURIComponent(payload)));
-
-        document.getElementById('output-code').value = finalCode;
-    };
-    reader.readAsDataURL(file);
+// A super compact pseudo-encoding function (~25 chars)
+function compactEncode(data) {
+  let s = btoa(data).replace(/=+$/,''); // remove padding
+  return s.slice(0,25).padEnd(25,'0'); // force 25 chars
 }
 
-// Turning the code back into an image
-function decodeCode() {
-    const code = document.getElementById('receive-code').value.trim();
-    if (!code) {
-        alert("Paste a code!");
-        return;
-    }
+function compactDecode(code) {
+  code = code.replace(/0+$/,''); // remove padded zeros
+  return atob(code);
+}
 
-    try {
-        const decoded = decodeURIComponent(escape(atob(code)));
-        const parts = decoded.split("|");
+function sendImage() {
+  const user = document.getElementById('username').value;
+  const name = document.getElementById('imagename').value;
+  const file = document.getElementById('imagefile').files[0];
+  if(!user || !name || !file) return alert("Fill all fields!");
+  
+  const reader = new FileReader();
+  reader.onload = () => {
+    const base64Data = reader.result.split(',')[1];
+    const code = compactEncode(user + "|" + name + "|" + base64Data);
+    chat.innerHTML += `<div><b>Sent:</b> ${code}</div>`;
+  };
+  reader.readAsDataURL(file);
+}
 
-        if (parts[0] !== "IMG") {
-            alert("Invalid code!");
-            return;
-        }
-
-        const user = parts[1];
-        const name = parts[2];
-        const imageData = parts[3];
-
-        document.getElementById('receive-info').innerText =
-            "From: " + user + "  —  Image: " + name;
-
-        document.getElementById('receive-img').src = imageData;
-
-    } catch (err) {
-        alert("Invalid or corrupted code!");
-    }
+function receiveImage() {
+  const code = document.getElementById('codeInput').value;
+  try {
+    const decoded = compactDecode(code);
+    const parts = decoded.split('|');
+    const user = parts[0], name = parts[1], base64 = parts[2];
+    const img = new Image();
+    img.src = 'data:image/png;base64,' + base64;
+    chat.innerHTML += `<div><b>Received from ${user} (${name}):</b><br> ${img.outerHTML}</div>`;
+  } catch(e){
+    alert("Invalid code!");
+  }
 }
 </script>
 
