@@ -2,52 +2,139 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Retro iOS Image Dropper</title>
+<title>Image Share</title>
 <style>
     body {
         font-family: -apple-system, Helvetica, Arial;
-        background: #f2f2f2;
+        background: #eee;
         padding: 20px;
         text-align: center;
-        color: #333;
+        color: #222;
     }
-    h1 {
-        font-size: 22px;
-        margin-bottom: 15px;
-    }
-    #preview {
-        margin-top: 20px;
-        max-width: 90%;
-        border: 1px solid #ccc;
+    h1 { margin-bottom: 5px; }
+    #modeButtons button {
+        margin: 10px;
+        padding: 10px 18px;
         border-radius: 10px;
-        padding: 10px;
+        border: none;
+        background: #007aff;
+        color: white;
+        font-size: 16px;
+    }
+    .panel {
+        display: none;
+        margin-top: 20px;
         background: white;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #ccc;
+    }
+    #preview img {
+        max-width: 100%;
+        border-radius: 10px;
     }
 </style>
 </head>
 <body>
 
-<h1>📲 Retro iOS Image Transfer</h1>
-<p>Select an image and it’ll appear below so you can save it.</p>
+<h1>📤📥 Image Share</h1>
+<p>Send or receive images using usernames + image names.</p>
 
-<input type="file" accept="image/*" id="fileInput"><br>
+<div id="modeButtons">
+    <button onclick="showSend()">Send Mode</button>
+    <button onclick="showReceive()">Receive Mode</button>
+</div>
 
-<div id="preview">No image loaded yet 😔</div>
+<!-- SEND MODE -->
+<div id="sendPanel" class="panel">
+    <h2>Send an Image</h2>
+    <input id="senderUser" placeholder="Your Username"><br><br>
+    <input id="senderName" placeholder="Image Name"><br><br>
+    <input type="file" accept="image/*" id="senderFile"><br><br>
+    <button onclick="createShare()">Create Share Link</button>
+    <p id="shareResult"></p>
+</div>
+
+<!-- RECEIVE MODE -->
+<div id="receivePanel" class="panel">
+    <h2>Receive an Image</h2>
+    <input id="receiverUser" placeholder="Username"><br><br>
+    <input id="receiverName" placeholder="Image Name"><br><br>
+    <button onclick="loadShared()">Load Image</button>
+
+    <div id="preview" style="margin-top:20px;"></div>
+</div>
 
 <script>
-    var fileInput = document.getElementById("fileInput");
-    var preview = document.getElementById("preview");
+function hideAll() {
+    document.getElementById("sendPanel").style.display = "none";
+    document.getElementById("receivePanel").style.display = "none";
+}
 
-    fileInput.onchange = function (event) {
-        var file = event.target.files[0];
-        if (!file) return;
+function showSend() {
+    hideAll();
+    document.getElementById("sendPanel").style.display = "block";
+}
+function showReceive() {
+    hideAll();
+    document.getElementById("receivePanel").style.display = "block";
+}
 
-        var reader = new FileReader();
-        reader.onload = function (e) {
-            preview.innerHTML = "<img src='" + e.target.result + "' style='max-width:100%; border-radius:10px;'>";
-        };
-        reader.readAsDataURL(file);
+// SEND MODE FUNCTION
+function createShare() {
+    var user = document.getElementById("senderUser").value.trim();
+    var name = document.getElementById("senderName").value.trim();
+    var file = document.getElementById("senderFile").files[0];
+
+    if (!user || !name || !file) {
+        alert("Fill everything!");
+        return;
+    }
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var data = e.target.result;
+        // Encode: username|imagename|base64
+        var payload = encodeURIComponent(user + "|" + name + "|" + data);
+
+        var link = location.href.split("#")[0] + "#" + payload;
+
+        document.getElementById("shareResult").innerHTML =
+            "Share this link:<br><textarea style='width:100%;height:80px;'>" +
+            link + "</textarea>";
     };
+    reader.readAsDataURL(file);
+}
+
+// RECEIVE MODE FUNCTION
+function loadShared() {
+    var wantUser = document.getElementById("receiverUser").value.trim();
+    var wantName = document.getElementById("receiverName").value.trim();
+
+    var hash = decodeURIComponent(location.hash.substring(1));
+    if (!hash) {
+        alert("No shared image detected!");
+        return;
+    }
+
+    var parts = hash.split("|");
+    if (parts.length < 3) {
+        alert("Share link invalid.");
+        return;
+    }
+
+    var sentUser = parts[0];
+    var sentName = parts[1];
+    var sentImg = parts[2];
+
+    if (sentUser === wantUser && sentName === wantName) {
+        document.getElementById("preview").innerHTML =
+            "<img src='" + sentImg + "'>";
+    } else {
+        alert("Wrong username or image name!");
+        document.getElementById("preview").innerHTML = "";
+    }
+}
 </script>
 
 </body>
