@@ -2,92 +2,79 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Image Reviver</title>
+<title>Minecraft Skin Converter</title>
 <style>
-  body { font-family: sans-serif; background: #f0f0f0; padding: 20px; }
-  .mode { margin-bottom: 20px; }
-  .chat { border: 1px solid #ccc; padding: 10px; height: 200px; overflow-y: auto; background: #fff; }
+  body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
   input, button { margin: 5px; }
+  canvas { border: 1px solid #ccc; margin-top: 10px; }
 </style>
 </head>
 <body>
 
-<h2>Image Reviver</h2>
-<div class="mode">
-  <label><input type="radio" name="mode" value="send" checked> Send</label>
-  <label><input type="radio" name="mode" value="receive"> Receive</label>
-</div>
+<h2>Minecraft New → Classic Skin Converter</h2>
 
-<div id="sendMode">
-  <input type="text" id="username" placeholder="Your username">
-  <input type="text" id="imagename" placeholder="Image name">
-  <input type="file" id="imagefile">
-  <button onclick="sendImage()">Send Image</button>
-</div>
-
-<div id="receiveMode" style="display:none;">
-  <input type="text" id="codeInput" placeholder="Enter code">
-  <button onclick="receiveImage()">Receive Image</button>
-</div>
-
-<h3>Chat / Code Messaging</h3>
-<div class="chat" id="chat"></div>
+<input type="file" id="skinInput" accept="image/png">
+<button onclick="convertSkin()">Convert</button>
+<br>
+<canvas id="canvas" width="64" height="64"></canvas>
+<br>
+<a id="downloadLink" href="#" download="classic_skin.png">Download Classic Skin</a>
 
 <script>
-const chat = document.getElementById('chat');
-const sendModeDiv = document.getElementById('sendMode');
-const receiveModeDiv = document.getElementById('receiveMode');
+function convertSkin() {
+    const file = document.getElementById('skinInput').files[0];
+    if(!file) return alert("Select a PNG skin!");
 
-document.querySelectorAll('input[name="mode"]').forEach(radio => {
-  radio.addEventListener('change', () => {
-    if(radio.value === 'send'){
-      sendModeDiv.style.display = 'block';
-      receiveModeDiv.style.display = 'none';
-    } else {
-      sendModeDiv.style.display = 'none';
-      receiveModeDiv.style.display = 'block';
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            // Create canvas to manipulate skin
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Clear canvas
+            ctx.clearRect(0,0,64,64);
+
+            // Draw original skin
+            ctx.drawImage(img, 0, 0);
+
+            // Remove all second-layer pixels (modern skins have extra layer at certain areas)
+            // Top layer areas (hat, jacket, sleeves, pants) coordinates
+            const secondLayerAreas = [
+                [32,0,32,16],   // head overlay
+                [32,16,32,16],  // body overlay
+                [48,48,16,16],  // right arm overlay
+                [32,48,16,16],  // left arm overlay
+                [48,32,16,16],  // right leg overlay
+                [32,32,16,16]   // left leg overlay
+            ];
+
+            ctx.clearRect(...secondLayerAreas[0]);
+            ctx.clearRect(...secondLayerAreas[1]);
+            ctx.clearRect(...secondLayerAreas[2]);
+            ctx.clearRect(...secondLayerAreas[3]);
+            ctx.clearRect(...secondLayerAreas[4]);
+            ctx.clearRect(...secondLayerAreas[5]);
+
+            // Downscale to 32x32 classic skin
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 32;
+            tempCanvas.height = 32;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(canvas,0,0,32,32);
+
+            // Put scaled classic skin back into main canvas for preview
+            canvas.width = 32;
+            canvas.height = 32;
+            ctx.drawImage(tempCanvas,0,0);
+
+            // Update download link
+            document.getElementById('downloadLink').href = canvas.toDataURL('image/png');
+        }
+        img.src = e.target.result;
     }
-  });
-});
-
-// A super compact pseudo-encoding function (~25 chars)
-function compactEncode(data) {
-  let s = btoa(data).replace(/=+$/,''); // remove padding
-  return s.slice(0,25).padEnd(25,'0'); // force 25 chars
-}
-
-function compactDecode(code) {
-  code = code.replace(/0+$/,''); // remove padded zeros
-  return atob(code);
-}
-
-function sendImage() {
-  const user = document.getElementById('username').value;
-  const name = document.getElementById('imagename').value;
-  const file = document.getElementById('imagefile').files[0];
-  if(!user || !name || !file) return alert("Fill all fields!");
-  
-  const reader = new FileReader();
-  reader.onload = () => {
-    const base64Data = reader.result.split(',')[1];
-    const code = compactEncode(user + "|" + name + "|" + base64Data);
-    chat.innerHTML += `<div><b>Sent:</b> ${code}</div>`;
-  };
-  reader.readAsDataURL(file);
-}
-
-function receiveImage() {
-  const code = document.getElementById('codeInput').value;
-  try {
-    const decoded = compactDecode(code);
-    const parts = decoded.split('|');
-    const user = parts[0], name = parts[1], base64 = parts[2];
-    const img = new Image();
-    img.src = 'data:image/png;base64,' + base64;
-    chat.innerHTML += `<div><b>Received from ${user} (${name}):</b><br> ${img.outerHTML}</div>`;
-  } catch(e){
-    alert("Invalid code!");
-  }
+    reader.readAsDataURL(file);
 }
 </script>
 
