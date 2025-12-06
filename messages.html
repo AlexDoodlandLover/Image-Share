@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Offline Messenger</title>
+<style>
+    body {
+        font-family: -apple-system, Helvetica, Arial;
+        background: #f2f2f7;
+        margin: 0;
+        padding: 15px;
+    }
+    h1 {
+        text-align: center;
+        font-size: 22px;
+        margin-bottom: 20px;
+    }
+    .mode-btn {
+        width: 48%;
+        padding: 12px;
+        margin: 1%;
+        font-size: 16px;
+        background: #ddd;
+        border: 1px solid #aaa;
+        border-radius: 8px;
+    }
+    #send-section, #receive-section {
+        display: none;
+        margin-top: 20px;
+        background: white;
+        padding: 15px;
+        border-radius: 12px;
+        border: 1px solid #ccc;
+    }
+    input, button, textarea {
+        width: 100%;
+        margin: 8px 0;
+        padding: 10px;
+        font-size: 16px;
+    }
+    textarea {
+        height: 120px;
+    }
+</style>
+</head>
+<body>
+
+<h1>Offline Messenger</h1>
+
+<button class="mode-btn" onclick="showSend()">Send Message</button>
+<button class="mode-btn" onclick="showReceive()">Receive Message</button>
+
+<!-- SEND -->
+<div id="send-section">
+    <h2>Send Mode</h2>
+
+    <label>Your Username:</label>
+    <input id="send-user" type="text">
+
+    <label>Message:</label>
+    <textarea id="send-msg"></textarea>
+
+    <button onclick="generateMessageCode()">Generate Code</button>
+
+    <label>Share Code:</label>
+    <textarea id="output-code" readonly></textarea>
+</div>
+
+<!-- RECEIVE -->
+<div id="receive-section">
+    <h2>Receive Mode</h2>
+
+    <label>Paste Code:</label>
+    <textarea id="receive-code"></textarea>
+
+    <button onclick="decodeMessage()">Decode</button>
+
+    <h3 id="display-user"></h3>
+    <p id="display-msg"></p>
+</div>
+
+<script>
+function showSend() {
+    document.getElementById('send-section').style.display = 'block';
+    document.getElementById('receive-section').style.display = 'none';
+}
+function showReceive() {
+    document.getElementById('send-section').style.display = 'none';
+    document.getElementById('receive-section').style.display = 'block';
+}
+
+function generateMessageCode() {
+    const user = document.getElementById('send-user').value.trim();
+    const msg = document.getElementById('send-msg').value.trim();
+
+    if (!user || !msg) {
+        alert("Fill everything out!");
+        return;
+    }
+
+    const payload = "MSG|" + user + "|" + msg;
+
+    // Encode whole payload
+    const finalCode = btoa(unescape(encodeURIComponent(payload)));
+
+    document.getElementById('output-code').value = finalCode;
+}
+
+function decodeMessage() {
+    const code = document.getElementById('receive-code').value.trim();
+    if (!code) {
+        alert("Paste a code!");
+        return;
+    }
+
+    try {
+        const decoded = decodeURIComponent(escape(atob(code)));
+        const parts = decoded.split("|");
+
+        if (parts[0] !== "MSG") {
+            alert("Invalid message code!");
+            return;
+        }
+
+        const user = parts[1];
+        const msg = parts[2];
+
+        document.getElementById('display-user').innerText = "From: " + user;
+        document.getElementById('display-msg').innerText = msg;
+    } catch (e) {
+        alert("Invalid or corrupted code!");
+    }
+}
+</script>
+</body>
+</html>
