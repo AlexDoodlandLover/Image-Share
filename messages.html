@@ -2,46 +2,91 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Image Reviver Decoder</title>
+<title>Image Reviver</title>
 <style>
   body { font-family: sans-serif; background: #f0f0f0; padding: 20px; }
+  .mode { margin-bottom: 20px; }
+  .chat { border: 1px solid #ccc; padding: 10px; height: 200px; overflow-y: auto; background: #fff; }
   input, button { margin: 5px; }
-  .output { margin-top: 20px; border: 1px solid #ccc; padding: 10px; background: #fff; }
 </style>
 </head>
 <body>
 
-<h2>Image Reviver Decoder</h2>
+<h2>Image Reviver</h2>
+<div class="mode">
+  <label><input type="radio" name="mode" value="send" checked> Send</label>
+  <label><input type="radio" name="mode" value="receive"> Receive</label>
+</div>
 
-<input type="text" id="codeInput" placeholder="Paste your 25-char code">
-<button onclick="decodeCode()">Decode</button>
+<div id="sendMode">
+  <input type="text" id="username" placeholder="Your username">
+  <input type="text" id="imagename" placeholder="Image name">
+  <input type="file" id="imagefile">
+  <button onclick="sendImage()">Send Image</button>
+</div>
 
-<div class="output" id="output"></div>
+<div id="receiveMode" style="display:none;">
+  <input type="text" id="codeInput" placeholder="Enter code">
+  <button onclick="receiveImage()">Receive Image</button>
+</div>
+
+<h3>Chat / Code Messaging</h3>
+<div class="chat" id="chat"></div>
 
 <script>
-// Compact pseudo-Base64 decoder (matches the sender)
+const chat = document.getElementById('chat');
+const sendModeDiv = document.getElementById('sendMode');
+const receiveModeDiv = document.getElementById('receiveMode');
+
+document.querySelectorAll('input[name="mode"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    if(radio.value === 'send'){
+      sendModeDiv.style.display = 'block';
+      receiveModeDiv.style.display = 'none';
+    } else {
+      sendModeDiv.style.display = 'none';
+      receiveModeDiv.style.display = 'block';
+    }
+  });
+});
+
+// A super compact pseudo-encoding function (~25 chars)
+function compactEncode(data) {
+  let s = btoa(data).replace(/=+$/,''); // remove padding
+  return s.slice(0,25).padEnd(25,'0'); // force 25 chars
+}
+
 function compactDecode(code) {
   code = code.replace(/0+$/,''); // remove padded zeros
   return atob(code);
 }
 
-function decodeCode() {
+function sendImage() {
+  const user = document.getElementById('username').value;
+  const name = document.getElementById('imagename').value;
+  const file = document.getElementById('imagefile').files[0];
+  if(!user || !name || !file) return alert("Fill all fields!");
+  
+  const reader = new FileReader();
+  reader.onload = () => {
+    const base64Data = reader.result.split(',')[1];
+    const code = compactEncode(user + "|" + name + "|" + base64Data);
+    chat.innerHTML += `<div><b>Sent:</b> ${code}</div>`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function receiveImage() {
   const code = document.getElementById('codeInput').value;
-  const output = document.getElementById('output');
   try {
     const decoded = compactDecode(code);
     const parts = decoded.split('|');
-    const user = parts[0];
-    const name = parts[1];
-    const base64 = parts[2];
+    const user = parts[0], name = parts[1], base64 = parts[2];
     const img = new Image();
     img.src = 'data:image/png;base64,' + base64;
-    
-    output.innerHTML = `<p><b>Username:</b> ${user}</p>
-                        <p><b>Image Name:</b> ${name}</p>
-                        <p><b>Image Preview:</b><br>${img.outerHTML}</p>`;
-  } catch(e) {
-    output.innerHTML = "<p style='color:red'>Invalid code!</p>";
+    chat.innerHTML += `<div><b>Received from ${user} (${name}):</b><br> ${img.outerHTML}</div>`;
+  } catch(e){
+    alert("Invalid code!");
   }
 }
 </script>
